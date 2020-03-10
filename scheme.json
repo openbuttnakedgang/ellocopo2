@@ -3,7 +3,7 @@
     "@visibility": "public",
     "@control": ["ctrl, io"],
     "@com1": "Это файл описания протокола и только! А не самого устройства c его форматами и функциональностью!",
-    "@com2": "Стандартый @type = u32, Стандартный @access = RO, Если у поля нет вложенных значений, значит указан его тип",
+    "@com2": "Стандартный @access = RO, Если у поля нет вложенных значений, значит указан его тип",
     "@com3": "[sign][path_sz][payload_sz][op][ty][path...][payload...]",
     "@com4": " header max len = 256, payload max len = 256, msg max len = 512",
     "@com5": " max path len = 256 - 5, max payload data len = 256 ",
@@ -34,7 +34,7 @@
         "store": {
             "@com": "Max line size 64, max line count 64",
             "idx": "u8",
-            "line": "[u8;64]",
+            "line": "[u8]",
             "max": "u32"
         }
     },
