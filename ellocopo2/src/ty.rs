@@ -7,7 +7,7 @@ use num_enum::IntoPrimitive;
 /// Available types
 ///
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Value<'a> {
     UNIT,
     BOOL(bool),
@@ -23,7 +23,7 @@ pub enum Value<'a> {
 
 #[repr(u8)]
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
+#[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive, PartialEq, Eq)]
 pub enum TypeTag {
     UNIT = 0,  
     BOOL = 1,

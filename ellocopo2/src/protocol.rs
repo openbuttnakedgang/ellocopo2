@@ -1,11 +1,16 @@
 #![allow(non_camel_case_types)]
 
+use core::mem::size_of;
+use core::convert::{From, TryFrom};
+
 use num_enum::TryFromPrimitive;
 
 use crate::ty::{Value, TypeTag};
 
-
 pub const MAX_MSG_SZ: usize = 512;
+pub const HEADER_SZ: usize = size_of::<Header>();
+pub const MAX_PATH_SZ: usize = MAX_MSG_SZ / 2 - HEADER_SZ;
+pub const MAX_PAYLOAD_SZ: usize = MAX_MSG_SZ / 2;
 
 // Signature and protocol version
 pub const SIGN: u8 = 0x8E;
@@ -49,6 +54,7 @@ pub enum AnswerCode {
 }
 
 #[repr(packed)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Header {
     pub sign: u8,
     pub path_sz: u8,
@@ -101,7 +107,7 @@ impl <'a> RequestBuilder<'a> {
             header.payload_ty = self.payload_ty as u8;
         }
 
-        let header : &Header = unsafe { &*(self.buf.as_mut_ptr() as *const _)};
+        let header : &Header = unsafe { &*(self.buf.as_ptr() as *const _)};
         let header_sz = core::mem::size_of::<Header>();
 
         let path_end_pos = header_sz + (header.path_sz as usize);
@@ -171,6 +177,28 @@ impl <'a> AnswerBuilder<'a> {
             payload_dst.copy_from_slice(self.payload);
 
             payload_end_pos
+        }
+    }
+}
+
+impl From<RequestCode> for AnswerCode {
+    fn from(c: RequestCode) -> Self {
+        use RequestCode::*;
+        match c {
+            READ => AnswerCode::OK_READ,
+            WRITE => AnswerCode::OK_WRITE,
+        }
+    }
+}
+
+impl TryFrom<AnswerCode> for RequestCode {
+    type Error = ();
+    fn try_from(c: AnswerCode) -> Result<Self, Self::Error> {
+        use AnswerCode::*;
+        match c {
+            OK_READ => Ok(RequestCode::READ),
+            OK_WRITE => Ok(RequestCode::WRITE),
+            _ => Err(())
         }
     }
 }

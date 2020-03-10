@@ -1,0 +1,10 @@
+struct MyTest { a: u32, b: u8} fmt
+struct MyTest { a: u32, b: u8} fmt
+struct MyTest { a: u32, b: u8} fmt -- --output
+struct MyTest { a: u32, b: u8} fmt -- --stdout
+struct MyTest { a: u32, b: u8} fmt -- --stdout
+struct MyTest { a: u32, b: u8} fmt --stdout
+struct MyTest { a: u32, b: u8} fmt -- --emit stdout
+struct MyTest { a: u32, b: u8} fmt -- --emit stdout
+struct MyTest { a: u32, b: u8} fmt -- --emit stdout
+struct MyTest { a: u32, b: u8} fmt -- --emit stdout
