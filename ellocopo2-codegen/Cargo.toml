@@ -9,4 +9,6 @@ edition = "2018"
 [dependencies]
 ellocopo2 = { path = "../ellocopo2"}
 serde_json = "1.0"
+syn = { version = "1.0", features = ["full", "extra-traits", "derive"] }
+proc-macro2 = "1.0"
 quote = "1.0"

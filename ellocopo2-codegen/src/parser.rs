@@ -1,12 +1,11 @@
 use core::fmt::Display;
 
-use quote::quote;
 use serde_json::{Result as JsonResult, Value as JsonValue, map::Map};
 use ellocopo2::TypeTag;
 
 const ANNOTATION_ACCESS_STR : &'static str = "@access";
 const ANNOTATION_TYPE_STR   : &'static str = "@type";
-const REGISTER_PATH_DELIMETR: &'static str = "_";
+const REGISTER_PATH_DELIMETR: &'static str = "/";
 
 #[derive(Clone)]
 pub struct RegisterDesc {
@@ -55,22 +54,14 @@ impl Default for MetaDesc {
     }
 }
 
-pub fn parser(dsl: &str) -> String {
+pub fn parser(dsl: &str) -> Vec<RegisterDesc> {
     let v: JsonValue = serde_json::from_str(dsl).unwrap();
     //println!("{:#?}", v);
     //sections(v);
     let l = visit_regs(v);
-    println!("{:?}", l);
+    println!("{:?}", &l);
         
-    //let tokens = quote! {
-    //    struct MyTest {
-    //        a: u32,
-    //        b: u8,
-    //    }
-    //};
-    //println!("{:#}", &tokens);
-
-    String::new()
+    l
 }
 
 fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
