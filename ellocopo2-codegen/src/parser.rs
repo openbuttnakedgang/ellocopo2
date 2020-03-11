@@ -5,7 +5,7 @@ use ellocopo2::TypeTag;
 
 const ANNOTATION_ACCESS_STR : &'static str = "@access";
 const ANNOTATION_TYPE_STR   : &'static str = "@type";
-const REGISTER_PATH_DELIMETR: &'static str = "/";
+pub const REGISTER_PATH_DELIMETR: &'static str = "/";
 
 #[derive(Clone)]
 pub struct RegisterDesc {
