@@ -8,11 +8,17 @@ const ANNOTATION_ACCESS_STR : &'static str = "@access";
 const ANNOTATION_TYPE_STR   : &'static str = "@type";
 const REGISTER_PATH_DELIMETR: &'static str = "_";
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RegisterDesc {
     pub path: String,
     pub ty: TypeTag,
     pub meta: MetaDesc,
+}
+
+impl core::fmt::Debug for RegisterDesc {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "\nReg: {:40} : {:5} : {:2}", self.path, &format!("{:?}", self.ty), self.meta)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -49,25 +55,12 @@ impl Default for MetaDesc {
     }
 }
 
-impl RegisterDesc {
-    pub fn new(path: String, ty: TypeTag, w: bool, r: bool) -> Self {
-        Self {
-            path,
-            ty,
-            meta : MetaDesc {
-                w,
-                r,
-                fast: false,
-            }
-        }
-    }
-}
-
 pub fn parser(dsl: &str) -> String {
     let v: JsonValue = serde_json::from_str(dsl).unwrap();
     //println!("{:#?}", v);
     //sections(v);
-    let _ = visit_regs(v);
+    let l = visit_regs(v);
+    println!("{:?}", l);
         
     //let tokens = quote! {
     //    struct MyTest {
@@ -113,7 +106,8 @@ fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
         ty
     }
     
-    fn inner_visit(path: String, fields: Map<String, JsonValue>, meta: MetaDesc) {
+    fn inner_visit(path: String, fields: Map<String, JsonValue>, meta: MetaDesc) -> Vec<RegisterDesc> {
+        let mut list = Vec::new();
         let mut meta = extract_meta(fields.clone(), meta);
             
         for (k,v) in &fields {
@@ -125,18 +119,27 @@ fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
                         // should be type
                         let ty = ty_convert(field.clone())
                             .expect("Wrong register type");
-                        println!("Reg: {:40} : {:5} : {:2}", updated_path, &format!("{:?}",ty), meta);
+                        if let TypeTag::UNIT = ty {
+                            meta = MetaDesc{w: true, r: false, .. meta};
+                        }
+                        //println!("Reg: {:40} : {:5} : {:2}", updated_path, &format!("{:?}",ty), meta);
+                        list.push(RegisterDesc{ path: updated_path, ty, meta });
                     }
                     JsonValue::Object(fields) => {
                         meta = extract_meta(fields.clone(), meta);
                         match extract_ty(fields.clone()) {
                             // test if nested register description
                             Some(ty) => {
-                                println!("Reg: {:40} : {:5} : {:2} : ext", updated_path, &format!("{:?}",ty), meta);
+                                if let TypeTag::UNIT = ty {
+                                    meta = MetaDesc{w: true, r: false, .. meta};
+                                }
+                                //println!("Reg: {:40} : {:5} : {:2} : ext", updated_path, &format!("{:?}",ty), meta);
+                                list.push(RegisterDesc{ path: updated_path, ty, meta });
                             }
                             // if None it's nested section, so continue
                             None => {
-                                inner_visit(path.clone()+ REGISTER_PATH_DELIMETR + &k, fields.clone(), meta);
+                                let l = inner_visit(path.clone()+ REGISTER_PATH_DELIMETR + &k, fields.clone(), meta);
+                                list.extend(l);
                             }
                         }
                     }
@@ -144,9 +147,11 @@ fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
                 }
             }
         }
+
+        list
     }
 
-    let mut reg_list = Vec::new();
+    let mut list = Vec::new();
     let meta = MetaDesc::default();
     // root object
     if let JsonValue::Object(root) = root {
@@ -155,7 +160,8 @@ fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
             if !k.starts_with("@") {
                 match &v {
                     JsonValue::Object(fields) => {
-                        inner_visit(k.clone(), fields.clone(), meta);
+                        let l = inner_visit(k.clone(), fields.clone(), meta);
+                        list.extend(l);
                     }
                     _ => ()
                 }
@@ -165,7 +171,7 @@ fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
         panic!("None root object!")
     }
 
-    reg_list
+    list
 }
 
 fn ty_convert(tytag: String) -> Result<TypeTag, String> {
