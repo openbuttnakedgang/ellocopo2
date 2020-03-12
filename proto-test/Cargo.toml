@@ -1,0 +1,12 @@
+[package]
+name = "proto-test"
+version = "0.1.0"
+authors = ["Роман Масленников <m3angreen@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+ellocopo2 = { path = "../ellocopo2"}
+
+[build-dependencies]
+ellocopo2-codegen = { path = "../ellocopo2-codegen"}

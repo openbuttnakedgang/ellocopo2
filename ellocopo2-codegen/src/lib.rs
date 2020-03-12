@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 
 mod parser;
 mod gen;
@@ -24,18 +25,4 @@ mod tests {
         let mut file = File::create("codegen.rs").unwrap();
         file.write_all(txt.as_bytes()).unwrap();
     }
-
-    //#[test]
-    //fn it_works2() {
-    //    let mut my_str = "foo";
-
-    //    let s = match my_str {
-    //        s @ "foo" => s,
-    //        s @ "bar" => s,
-    //        s @ "bazzz" => s,
-    //        _ => "not any",
-    //    };
-
-    //    println!("s is : {}", s);
-    //}
 }

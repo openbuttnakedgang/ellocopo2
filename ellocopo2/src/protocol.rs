@@ -418,11 +418,11 @@ mod test {
         let _ = RequestBuilder::new(&mut buf)
             .code(RequestCode::WRITE)
             .path("path")
-            .payload(Value::UNIT)
+            .payload(Value::UNIT(()))
             .build();
 
         let ans_sz = AnswerBuilder::new(&mut buf)
-            .payload(Value::UNIT)
+            .payload(Value::UNIT(()))
             .build();
         let ans_slice = &buf[0..ans_sz];
 

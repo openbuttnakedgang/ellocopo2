@@ -4,8 +4,9 @@ version = "0.1.0"
 authors = ["Roman M. <m3angreen@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+std = []
 
 [dependencies]
-bitflags = "1.1.0"
-num_enum = "0.4.2"
+num_enum = { version = "0.4.2", default-features = false }

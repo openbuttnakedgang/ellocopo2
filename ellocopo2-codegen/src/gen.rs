@@ -1,6 +1,6 @@
 
 use proc_macro2::{Span, TokenStream};
-use syn::{parse_macro_input,  Fields, ItemStruct, Ident, FieldsNamed, ExprLit, Lit, LitInt, LitStr};
+use syn::{Ident, LitInt, LitStr};
 //use syn::parse::{Parse, ParseStream};
 use quote::quote;
 
@@ -10,25 +10,71 @@ use crate::parser::{RegisterDesc, REGISTER_PATH_DELIMETR};
 
 // cargo test && rustfmt --emit stdout codegen.rs
 pub fn gen(list: Vec<RegisterDesc>) -> String {
-    let msg_enum = gen_msg_enum(list.clone());
-    let typecheck = gen_typecheck(list.clone());
-    let path2num = gen_path2num(list.clone());
+    //let msg_enum = gen_msg_enum(list.clone());
+    let msg_infra = gen_req2msg(list.clone());
+    let _typecheck = gen_typecheck(list.clone());
+    let _path2num = gen_path2num(list.clone());
 
     quote!(
-        #msg_enum
-        #typecheck
-        #path2num
+        #msg_infra
+        //#typecheck
+        //#path2num
     ).to_string()
 }
 
-/*
-fn req2msg(code: RequestCode, path: &str, value: Value) -> Result<MsgReq, ()> {
-    match (code, path, value) {
-        (RequestCode::READ, "...", VALUE::STR(v)) => MsgReq::....(v),
-        ...
-    }
+fn gen_req2msg(list: Vec<RegisterDesc>) -> TokenStream {
+
+    let path: Vec<LitStr> = list.iter()
+                      .map(|r| r.path.clone())
+                      .map(|p| LitStr::new(&p, Span::call_site()))
+                      .collect();
+
+    let typetag: Vec<TokenStream> = list.iter()
+                      .map(|r| r.ty)
+                      .map(|ty| convert_typetag(ty))
+                      .collect();
+
+
+    let rd_variants: Vec<Ident> = list.iter()
+                       .map(|r| r.path.clone() )
+                       .map(|r| r.replace(REGISTER_PATH_DELIMETR, "_"))
+                       .map(|p| Ident::new(&(String::from("rd") + &p), Span::call_site()))
+                       .collect();
+    
+    let wr_variants: Vec<Ident> = list.iter()
+                       .map(|r| r.path.clone() )
+                       .map(|r| r.replace(REGISTER_PATH_DELIMETR, "_"))
+                       .map(|p| Ident::new(&(String::from("wr") + &p), Span::call_site()))
+                       .collect();
+    
+    let ty: Vec<TokenStream> = list.iter()
+                      .map(|reg| convert_ty(reg.ty))
+                      .collect();
+
+    quote!(
+
+        #[allow(non_camel_case_types)]
+        #[derive(Debug, Clone, Copy)]
+        pub enum MsgReq<'a> {
+            #(
+                #rd_variants,
+                #wr_variants(#ty),
+            )*
+        }
+
+        pub fn req2msg<'a>(code: RequestCode, path: &str, value: Value<'a>) -> Result<MsgReq<'a>, ()> {
+            match (code, path, value) {
+                #(
+                    (RequestCode::READ, #path, _) => Ok(MsgReq::#rd_variants),
+                )*
+                #(
+                    (RequestCode::WRITE, #path, Value::#typetag(v)) => Ok(MsgReq::#wr_variants(v)),
+                )*
+                _ => Err(())
+            }
+        }
+    )
 }
-*/
 
 
 fn gen_path2num(list: Vec<RegisterDesc>) -> TokenStream {
@@ -107,7 +153,7 @@ fn gen_msg_enum(list: Vec<RegisterDesc>) -> TokenStream {
 
     quote!(
         #[derive(Debug, Clone, Copy)]
-        pub enum MsgReq {
+        pub enum MsgReq<'a> {
             #(
                 #rd_variants,
                 #wr_variants(#ty),
@@ -124,8 +170,8 @@ fn convert_ty(ty: TypeTag) -> TokenStream {
          U8    => quote!(u8),
          I32   => quote!(i32),
          U32   => quote!(u32),
-         STR   => quote!(&'static str),
-         BYTES => quote!(&'static [u8]),
+         STR   => quote!(&'a str),
+         BYTES => quote!(&'a [u8]),
         _      => panic!("Gen: unsupproted type: {:?}", ty),
     }
 }

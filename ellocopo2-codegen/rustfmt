@@ -1,3 +1,0 @@
-struct MyTest { a: u32, b: u8}
-struct MyTest { a: u32, b: u8}
-struct MyTest { a: u32, b: u8} --stdout

@@ -1,2 +1,2 @@
 [workspace]
-members = ["ellocopo2", "ellocopo2-codegen"]
+members = ["ellocopo2", "ellocopo2-codegen", "proto-test", "cli"]

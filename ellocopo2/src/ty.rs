@@ -9,7 +9,7 @@ use num_enum::IntoPrimitive;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Value<'a> {
-    UNIT,
+    UNIT(()),
     BOOL(bool),
     I32(i32),
     I16(i16),
@@ -47,7 +47,7 @@ impl<'a> From<&Value<'a>> for &'a [u8] {
     fn from(v: &Value<'a>) -> &'a [u8] {
         use Value::*;
         match v {
-            UNIT     => &[0u8; 0],
+            UNIT(_)  => &[0u8; 0],
             BOOL(v)  => unsafe { from_raw_parts(transmute(v), size_of_val(v)) },
             I32(v)   => unsafe { from_raw_parts(transmute(v), size_of_val(v)) },
             I16(v)   => unsafe { from_raw_parts(transmute(v), size_of_val(v)) },
@@ -65,7 +65,7 @@ impl From<&Value<'_>> for TypeTag {
     fn from(v: &Value) -> TypeTag {
         use Value::*;
         match v {
-            UNIT     => TypeTag::UNIT,
+            UNIT(_)  => TypeTag::UNIT,
             BOOL(_)  => TypeTag::BOOL,
             I32(_)   => TypeTag::I32, 
             I16(_)   => TypeTag::I16, 

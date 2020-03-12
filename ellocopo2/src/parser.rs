@@ -122,7 +122,7 @@ fn value_parser<'a>(payload: &'a[u8], ty_id: u8) -> Result<Value<'a>, ParserErro
 
     match ty_id {
         UNIT => {
-            Ok(Value::UNIT)
+            Ok(Value::UNIT(()))
         }
         BOOL => {
             Ok(Value::BOOL({

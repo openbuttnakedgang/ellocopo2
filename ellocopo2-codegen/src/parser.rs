@@ -1,6 +1,6 @@
 use core::fmt::Display;
 
-use serde_json::{Result as JsonResult, Value as JsonValue, map::Map};
+use serde_json::{Value as JsonValue, map::Map};
 use ellocopo2::TypeTag;
 
 const ANNOTATION_ACCESS_STR : &'static str = "@access";
@@ -151,7 +151,7 @@ fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
             if !k.starts_with("@") {
                 match &v {
                     JsonValue::Object(fields) => {
-                        let l = inner_visit(k.clone(), fields.clone(), meta);
+                        let l = inner_visit(String::from("/") + &k, fields.clone(), meta);
                         list.extend(l);
                     }
                     _ => ()
