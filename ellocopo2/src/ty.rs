@@ -3,11 +3,13 @@ use core::slice::from_raw_parts;
 
 use num_enum::TryFromPrimitive;
 use num_enum::IntoPrimitive;
+use serde::{Deserialize, Serialize};
 
 /// Available types
 ///
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub enum Value<'a> {
     UNIT(()),
     BOOL(bool),
