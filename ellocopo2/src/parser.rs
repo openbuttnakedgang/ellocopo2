@@ -94,10 +94,11 @@ impl<'a> ParseMsg<'a> {
                     let path_str: &'a str = unsafe { core::str::from_utf8_unchecked(self.path) };
                     let value: Value<'a> = value_parser(& i[self.pos .. self.pos + self.header.payload_sz as usize],
                         self.header.payload_ty)?;
-
+                    
+                    self.reset();
                     return Ok(Msg(code, path_str, value));
                 }
-                ParsingDone => panic!("Msg parser used after ParsingDone"),
+                ParsingDone => unreachable!("Msg parser used after ParsingDone"),
             }
         }
     }
