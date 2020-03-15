@@ -8,4 +8,6 @@ edition = "2018"
 ellocopo2 = { path = "../ellocopo2" }
 libusb = "0.3.0"
 log = "0.4.6"
-nom = "5"
+#nom = "5"
+syn = { version = "1.0", features = ["full", "extra-traits", "derive"] }
+proc-macro2 = "1.0"

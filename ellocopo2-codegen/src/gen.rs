@@ -22,6 +22,19 @@ pub fn gen(list: Vec<RegisterDesc>) -> String {
     ).to_string()
 }
 
+fn butify_path(path: &str) -> String {
+    let empty = String::with_capacity(path.len());
+    path.split(|c| c == REGISTER_PATH_DELIMETR.chars().next().unwrap() || c == '_')
+        .fold(empty, |acc, s| {
+            let mut c = s.chars();
+            let s = match c.next() {
+                None => String::new(),
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            };
+            acc + &s
+        })
+}
+
 fn gen_req2msg(list: Vec<RegisterDesc>) -> TokenStream {
 
     let path: Vec<LitStr> = list.iter()
@@ -34,17 +47,16 @@ fn gen_req2msg(list: Vec<RegisterDesc>) -> TokenStream {
                       .map(|ty| convert_typetag(ty))
                       .collect();
 
-
     let rd_variants: Vec<Ident> = list.iter()
-                       .map(|r| r.path.clone() )
-                       .map(|r| r.replace(REGISTER_PATH_DELIMETR, "_"))
-                       .map(|p| Ident::new(&(String::from("rd") + &p), Span::call_site()))
+                       .map(|r| r.path.clone())
+                       .map(|r| butify_path(&r))
+                       .map(|p| Ident::new(&(String::from("Rd_") + &p), Span::call_site()))
                        .collect();
     
     let wr_variants: Vec<Ident> = list.iter()
-                       .map(|r| r.path.clone() )
-                       .map(|r| r.replace(REGISTER_PATH_DELIMETR, "_"))
-                       .map(|p| Ident::new(&(String::from("wr") + &p), Span::call_site()))
+                       .map(|r| r.path.clone())
+                       .map(|r| butify_path(&r))
+                       .map(|p| Ident::new(&(String::from("Wr_") + &p), Span::call_site()))
                        .collect();
     
     let ty: Vec<TokenStream> = list.iter()

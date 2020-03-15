@@ -1,5 +1,6 @@
 
 use core::convert::TryFrom;
+use core::ops::Range;
 
 use crate::ty::*;
 use crate::protocol::*;
@@ -32,19 +33,19 @@ pub enum ParseState {
     ParsingDone,
 }
 
-pub struct ParseMsg<'a> {
+pub struct ParseMsg {
     header: Header,
-    path: &'a [u8],
-    payload: &'a [u8],
+    path: Range<usize>,
+    payload: Range<usize>,
     pos: usize,
     state: ParseState,
 }
 
-impl<'a> ParseMsg<'a> {
+impl ParseMsg {
     pub fn new() -> Self { 
         ParseMsg { 
-            path: &[0x0;0x0],
-            payload: &[0x0;0x0],
+            path: 0 .. 0,
+            payload: 0 .. 0, 
             pos: 0,
             state: ParseState::ParsingHeader,
             header: Default::default(),
@@ -56,17 +57,17 @@ impl<'a> ParseMsg<'a> {
         self.state = ParseState::ParsingHeader;
     }
 
-    pub fn try_parse(&mut self, i: &'a[u8]) -> ParseResult {
+    pub fn try_parse<'a>(&mut self, i: &'a[u8]) -> ParseResult<'a> {
         use ParseState::*;
         loop {
             match &self.state {
                 ParsingHeader => {
                     let header = header_parser(i)?;
                     self.header = *header;
-                    if self.header.path_sz > MAX_PATH_SZ as u8 { 
+                    if self.header.path_sz as usize > MAX_PATH_SZ { 
                         return ParseResult::Err(ParserError::BadPathSz); 
                     }
-                    if self.header.payload_sz > MAX_PATH_SZ as u8 { 
+                    if self.header.payload_sz as usize > MAX_PAYLOAD_SZ { 
                         return ParseResult::Err(ParserError::BadPayloadSz); 
                     }
 
@@ -77,7 +78,7 @@ impl<'a> ParseMsg<'a> {
                     if i.len() - self.pos < self.header.path_sz as usize {
                         return Err(ParserError::NeedMoreData);
                     }
-                    self.path = &i[self.pos .. self.pos + self.header.path_sz as usize];
+                    self.path = self.pos .. self.pos + self.header.path_sz as usize;
 
                     self.state = ParsingValue;
                     self.pos += self.header.path_sz as usize;
@@ -86,13 +87,13 @@ impl<'a> ParseMsg<'a> {
                     if i.len() - self.pos < self.header.payload_sz as usize {
                         return Err(ParserError::NeedMoreData);
                     }
-                    self.payload = &i[self.pos .. self.pos + self.header.payload_sz as usize];
+                    self.payload = self.pos .. self.pos + self.header.payload_sz as usize;
 
                     self.state = ParsingDone;
                     
                     let code = AnswerCode::try_from(self.header.code).map_err(|_| ParserError::BadCode)?;
-                    let path_str: &'a str = unsafe { core::str::from_utf8_unchecked(self.path) };
-                    let value: Value<'a> = value_parser(& i[self.pos .. self.pos + self.header.payload_sz as usize],
+                    let path_str: & str = unsafe { core::str::from_utf8_unchecked(&i[self.path.clone()]) };
+                    let value: Value = value_parser(& i[self.pos .. self.pos + self.header.payload_sz as usize],
                         self.header.payload_ty)?;
                     
                     self.reset();

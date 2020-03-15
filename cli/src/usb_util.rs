@@ -27,7 +27,7 @@ pub fn open_device<'a>(
     context: &'a Context,
     //vid: u16,
     //pid: u16,
-) -> Option<Arc<LibUsbEntity<'a>>> {
+) -> Option<LibUsbEntity<'a>> {
     let vid = VID;
     let pid = PID;
 
@@ -45,11 +45,11 @@ pub fn open_device<'a>(
         if device_desc.vendor_id() == vid && device_desc.product_id() == pid {
             match device.open() {
                 Ok(handle) => {
-                    return Some(Arc::new(LibUsbEntity {
+                    return Some(LibUsbEntity {
                         d: device,
                         dd: device_desc,
                         dh: handle,
-                    }));
+                    });
                 }
                 Err(_) => continue,
             }

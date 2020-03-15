@@ -10,7 +10,8 @@ use crate::ty::{Value, TypeTag};
 pub const MAX_MSG_SZ: usize = 512;
 pub const HEADER_SZ: usize = size_of::<Header>();
 pub const MAX_PATH_SZ: usize = MAX_MSG_SZ / 2 - HEADER_SZ;
-pub const MAX_PAYLOAD_SZ: usize = MAX_MSG_SZ / 2;
+// To fit in u8, MAX_PAYLOAD_SZ: 2 -1  
+pub const MAX_PAYLOAD_SZ: usize = MAX_MSG_SZ / 2 - 1;
 
 // Signature and protocol version
 pub const SIGN: u8 = 0x8E;
@@ -82,6 +83,7 @@ impl <'a> RequestBuilder<'a> {
     }
 
     pub fn path(&mut self, path: &'a str) -> &mut Self {
+        assert!(path.len() <= MAX_PATH_SZ, "RequestBuilder, path too big!");
         self.path = Some(path);
         self
     }
@@ -89,6 +91,9 @@ impl <'a> RequestBuilder<'a> {
     pub fn payload(&mut self, value: Value<'a>) -> &mut Self {
         self.payload = (&value).into();
         self.payload_ty = (&value).into();
+
+        assert!(self.payload.len() <= MAX_PAYLOAD_SZ, "RequestBuilder, payload too big!");
+
         self
     }
 
@@ -149,6 +154,8 @@ impl <'a> AnswerBuilder<'a> {
     pub fn payload(&mut self, value: Value<'a>) -> &mut Self {
         self.payload = (&value).into();
         self.payload_ty = (&value).into();
+
+        assert!(self.payload.len() <= MAX_PAYLOAD_SZ, "AnswerBuilder, payload too big! {}", self.payload.len());
         self
     }
 
