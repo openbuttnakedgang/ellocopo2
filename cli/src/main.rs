@@ -122,6 +122,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn vis_test() {
         let dev = fixture_init();
         let dh = dev.dh;
@@ -150,6 +151,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn parse_value_test() {
         let mut tmp_buf = Vec::new();
 
@@ -158,6 +160,27 @@ mod tests {
         let _ = parse_value("true", &mut tmp_buf);
         let _ = parse_value("\"test\"", &mut tmp_buf);
         let _ = parse_value("[0,1,2]", &mut tmp_buf);
+    }
+    
+    #[test]
+    fn wrong_cmd_seq() {
+        let mut usb_e = fixture_init();
+
+        let mut buf = [0x00u8;MAX_MSG_SZ];
+        let sz = RequestBuilder::new(&mut buf)
+            .code(RequestCode::READ)
+            .path("/survey/surname")
+            .build()
+            .unwrap();
+
+
+        for _ in 0 .. 4 {
+            println!("{:?}", write_cmd(&usb_e.dh, &buf[..sz]));
+            let mut buf = [0x00u8;0x40];
+            let sz = read_cmd(&usb_e.dh, &mut buf).unwrap();
+            print!("Read bytes: {:x?}", &buf[..sz]);
+        }
+        let _ = usb_e.dh.reset();
     }
 
     #[test]
@@ -197,7 +220,6 @@ mod tests {
             println!("\n{}", str);
         }
 
-        
         //let surname = "\
         //        To be, or not to be, that is the question:
         //    Whether 'tis nobler in the mind to suffer
