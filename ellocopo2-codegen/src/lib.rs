@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod parser;
+pub mod parser;
 mod gen;
 
 pub fn generate(dsl: &str) -> String {
