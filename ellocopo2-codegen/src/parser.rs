@@ -64,7 +64,7 @@ pub fn parser(dsl: &str) -> Vec<RegisterDesc> {
     l
 }
 
-fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
+pub fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
 
     fn extract_meta(fields: Map<String, JsonValue>, inhereted_meta: MetaDesc) -> MetaDesc {
         let mut meta = inhereted_meta;
