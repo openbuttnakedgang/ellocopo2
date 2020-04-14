@@ -10,5 +10,7 @@ std = ["serde_json", "serde"]
 
 [dependencies]
 num_enum = { version = "0.4.2", default-features = false }
+
 serde_json = { version = "1.0", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
+
