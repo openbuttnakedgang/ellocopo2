@@ -22,20 +22,25 @@
 
     "io": {
         "@access": "RW",
-        "busy": "bool",
+        "status": "u32",
         "file": {
             "@com": "pos, len, max в блоках",
             "pos": "u32",
             "len": "u32",
-            "dir": "bool",
             "start": "()",
-            "max": "u32"
+            "max": {
+                "@type": "u32",
+                "@access": "RO"
+            }
         },
         "store": {
             "@com": "Max line size 64, max line count 64",
             "idx": "u8",
             "line": "[u8]",
-            "max": "u32"
+            "max": {
+                "@type": "u32",
+                "@access": "RO"
+            }
         }
     },
 
@@ -52,10 +57,10 @@
 
     "signal": {
         "@access": "RW",
-        "ecg": {
+        "ecgf": {
             "frq" :"u8"
         },
-        "reo": {
+        "reof": {
             "frq" :"u8"
         }
     },
@@ -94,6 +99,7 @@
 
     "build": {        
         "@access":  "RO",
+        "@fast": true,
         "version":  "str",
         "compiler": "str",
         "git":      "str",

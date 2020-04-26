@@ -10,12 +10,11 @@ const PID: u16 = 0x7503;
 const EP_VIS: u8 = 0x83;
 const EP_OUT: u8 = 0x01;
 const EP_IN: u8 = 0x81;
-//const EP_OUT: u8 = 0x04;
-//const EP_IN: u8 = 0x85;
-const EP_DATA_OUT: u8 = 0x07;
-const EP_DATA_IN: u8 = 0x86;
+const EP_DATA_OUT: u8 = 0x02;
+const EP_DATA_IN: u8 = 0x82;
 
 const BULK_TRANSFER_TIMEOUT_MS: u64 = 500;
+const DATA_TIMEOUT_MS: u64 = 300;
 
 pub struct LibUsbEntity<'a> {
     pub d: Device<'a>,
@@ -117,7 +116,7 @@ pub fn read_cmd(dh: &libusb::DeviceHandle, buf: &mut [u8]) -> std::result::Resul
     match dh.read_bulk(
         EP_IN,
         buf,
-        std::time::Duration::from_millis(BULK_TRANSFER_TIMEOUT_MS),
+        std::time::Duration::from_millis(DATA_TIMEOUT_MS),
     ) {
         Ok(r) => {
             trace!("read cmd {:?} bytes", r);
@@ -134,7 +133,7 @@ pub fn write_data(dh: &libusb::DeviceHandle, buf: &[u8]) -> Result<usize> {
     match dh.write_bulk(
         EP_DATA_OUT,
         buf,
-        std::time::Duration::from_millis(BULK_TRANSFER_TIMEOUT_MS),
+        std::time::Duration::from_millis(DATA_TIMEOUT_MS),
     ) {
         Ok(r) => {
             trace!("write data {:?} bytes", r);

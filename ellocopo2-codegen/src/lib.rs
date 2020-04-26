@@ -5,7 +5,7 @@ mod gen;
 
 pub fn generate(dsl: &str) -> String {
     let l = parser::parser(dsl);
-    gen::gen(l)
+    gen::gen(l.unwrap())
 }
 
 #[cfg(test)]

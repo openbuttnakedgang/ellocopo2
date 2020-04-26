@@ -114,7 +114,10 @@ mod tests {
     fn fixture_init() -> LibUsbEntity<'static> {
         let c : &'static libusb::Context = 
             Box::leak(Box::new( libusb::Context::new().expect("Can not obtain libusb context")));
-        let usb_e = usb_util::open_device(&c).expect("Device not found");
+        let mut usb_e = usb_util::open_device(&c).expect("Device not found");
+        // Reset
+        usb_e.dh.reset().unwrap();
+
         println!("Device connected!");
         println!("Device desc: {}\n", usb_util::string_desc(&usb_e.dh));
 
@@ -122,7 +125,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn vis_test() {
         let dev = fixture_init();
         let dh = dev.dh;
@@ -151,6 +153,76 @@ mod tests {
     }
 
     #[test]
+    fn data_read_test() {
+        let dev = fixture_init();
+        let dh = dev.dh;
+        
+        // SETUP TRANS
+        let mut buf = [0x00u8;MAX_MSG_SZ];
+        let sz = RequestBuilder::new(&mut buf)
+            .code(RequestCode::WRITE)
+            .path("/io/file/pos")
+            .payload(Value::U32(0))
+            .build()
+            .unwrap();
+        println!("{:?}", write_cmd(&dh, &buf[..sz]));
+        let sz = read_cmd(&dh, &mut buf).unwrap();
+        println!("{:x?}", &buf[..sz]);
+        let mut parser = ParseMsg::new();
+        let msg = parser.try_parse(&buf[..sz]).unwrap();
+        println!("msg: {:?}", &msg);
+        
+        const BLOCK_CNT: u32 = 1000;
+        let mut buf = [0x00u8;MAX_MSG_SZ];
+        let sz = RequestBuilder::new(&mut buf)
+            .code(RequestCode::WRITE)
+            .path("/io/file/len")
+            .payload(Value::U32(BLOCK_CNT))
+            .build()
+            .unwrap();
+        println!("{:?}", write_cmd(&dh, &buf[..sz]));
+        let sz = read_cmd(&dh, &mut buf).unwrap();
+        println!("{:x?}", &buf[..sz]);
+        let mut parser = ParseMsg::new();
+        let msg = parser.try_parse(&buf[..sz]).unwrap();
+        println!("msg: {:?}", &msg);
+
+        let mut buf = [0x00u8;MAX_MSG_SZ];
+        let sz = RequestBuilder::new(&mut buf)
+            .code(RequestCode::WRITE)
+            .path("/io/file/start")
+            .payload(Value::UNIT(()))
+            .build()
+            .unwrap();
+        println!("{:?}", write_cmd(&dh, &buf[..sz]));
+        let sz = read_cmd(&dh, &mut buf).unwrap();
+        println!("{:x?}", &buf[..sz]);
+        let mut parser = ParseMsg::new();
+        let msg = parser.try_parse(&buf[..sz]).unwrap();
+        println!("msg: {:?}", &msg);
+        
+        //std::thread::sleep(std::time::Duration::from_millis(1000));
+        // DATA READ
+        let mut total_bytes = BLOCK_CNT * 0x800;
+        while total_bytes != 0 {
+            let mut buf = [0x0u8; 0x800];
+            let sz = read_data(&dh, &mut buf).unwrap();
+            if sz == 0x800 {
+                let header = unsafe { &*(buf.as_ptr() as *const [u32;2]) };
+                print!("{:x}\t", header[1]);
+                //print!("{}\t", sz);
+                //print!("{:x?}", &buf[.. sz]);
+            }
+            else {
+                panic!("sz: {}", sz);
+            }
+
+            total_bytes -= sz as u32;
+            //std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+    }
+
+    #[test]
     #[ignore]
     fn parse_value_test() {
         let mut tmp_buf = Vec::new();
@@ -163,6 +235,7 @@ mod tests {
     }
     
     #[test]
+    #[ignore]
     fn wrong_cmd_seq() {
         let mut usb_e = fixture_init();
 

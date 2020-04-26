@@ -127,12 +127,12 @@ fn value_parser<'a>(payload: &'a [u8], ty_id: u8) -> Result<Value<'a>, ParserErr
                 true
             }
         })),
-        I32 => Ok(Value::I32({ unsafe { *(payload.as_ptr() as *const _) } })),
-        I16 => Ok(Value::I16({ unsafe { *(payload.as_ptr() as *const _) } })),
-        I8 => Ok(Value::I8({ unsafe { *(payload.as_ptr() as *const _) } })),
-        U32 => Ok(Value::U32({ unsafe { *(payload.as_ptr() as *const _) } })),
-        U16 => Ok(Value::U16({ unsafe { *(payload.as_ptr() as *const _) } })),
-        U8 => Ok(Value::U8({ unsafe { *(payload.as_ptr() as *const _) } })),
+        I32 => Ok(Value::I32( unsafe { *(payload.as_ptr() as *const _) } )),
+        I16 => Ok(Value::I16( unsafe { *(payload.as_ptr() as *const _) } )),
+        I8  => Ok(Value::I8(  unsafe { *(payload.as_ptr() as *const _) } )),
+        U32 => Ok(Value::U32( unsafe { *(payload.as_ptr() as *const _) } )),
+        U16 => Ok(Value::U16( unsafe { *(payload.as_ptr() as *const _) } )),
+        U8  => Ok(Value::U8(  unsafe { *(payload.as_ptr() as *const _) } )),
         STR => Ok(Value::STR({
             unsafe {
                 core::str::from_utf8_unchecked(core::slice::from_raw_parts(
@@ -152,6 +152,7 @@ pub mod owned {
     use serde::{Deserialize, Serialize};
     use crate::protocol::AnswerCode;
     use crate::ty::Value as NotOwnValue;
+    use crate::ty::TypeTag;
     use crate::parser::Msg as NotOwnMsg;
 
     #[derive(Debug, PartialEq, Eq, Clone)]
@@ -215,6 +216,24 @@ pub mod owned {
             let path = String::from(path);
             let value = Value::from(value);
             Msg(code, path, value)
+        }
+    }
+
+    impl From<&Value> for TypeTag {
+        fn from(v: &Value) -> TypeTag {
+            use Value::*;
+            match v {
+                UNIT(_)  => TypeTag::UNIT,
+                BOOL(_)  => TypeTag::BOOL,
+                I32(_)   => TypeTag::I32, 
+                I16(_)   => TypeTag::I16, 
+                I8(_)    => TypeTag::I8, 
+                U32(_)   => TypeTag::U32, 
+                U16(_)   => TypeTag::U16, 
+                U8(_)    => TypeTag::U8, 
+                STR(_)   => TypeTag::STR, 
+                BYTES(_) => TypeTag::BYTES, 
+            }
         }
     }
 }

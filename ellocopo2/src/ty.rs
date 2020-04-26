@@ -1,5 +1,6 @@
 use core::mem::{size_of_val, transmute};
 use core::slice::from_raw_parts;
+use core::convert::TryInto;
 
 use num_enum::TryFromPrimitive;
 use num_enum::IntoPrimitive;
@@ -41,7 +42,7 @@ pub enum TypeTag {
     BYTES = 9,    
 }
 
-impl core::default::Default for TypeTag {
+impl Default for TypeTag {
     fn default() -> Self {
         TypeTag::UNIT
     }
@@ -82,5 +83,55 @@ impl From<&Value<'_>> for TypeTag {
         }
     }
 }
+
+impl<'a> TryInto<&'a str> for Value<'a> {
+    type Error = crate::protocol::AnswerCode;
+
+    fn try_into(self) -> Result<&'a str, Self::Error> {
+        if let Value::STR(v) = self {
+            Ok(v)
+        } else {
+            Err(crate::protocol::AnswerCode::ERR_TYPE)
+        }
+    }
+}
+
+impl<'a> TryInto<&'a [u8]> for Value<'a> {
+    type Error = crate::protocol::AnswerCode;
+
+    fn try_into(self) -> Result<&'a [u8], Self::Error> {
+        if let Value::BYTES(v) = self {
+            Ok(v)
+        } else {
+            Err(crate::protocol::AnswerCode::ERR_TYPE)
+        }
+    }
+}
+
+macro_rules! impl_try_into_value{
+    ($val_var:ident, $ty:ty, $error_ty:path, $error_var:path) => {
+
+        impl<'a> TryInto<$ty> for Value<'_> {
+            type Error = $error_ty;
+
+            fn try_into(self) -> Result<$ty, Self::Error> {
+                if let Value::$val_var(v) = self {
+                    Ok(v)
+                } else {
+                    Err($error_var)
+                }
+            }
+        }
+    };
+}
+
+impl_try_into_value!(UNIT, (), crate::protocol::AnswerCode, crate::protocol::AnswerCode::ERR_TYPE);
+impl_try_into_value!(BOOL, bool, crate::protocol::AnswerCode, crate::protocol::AnswerCode::ERR_TYPE);
+impl_try_into_value!(U8,   u8, crate::protocol::AnswerCode, crate::protocol::AnswerCode::ERR_TYPE);
+impl_try_into_value!(I8,   i8, crate::protocol::AnswerCode, crate::protocol::AnswerCode::ERR_TYPE);
+impl_try_into_value!(U16, u16, crate::protocol::AnswerCode, crate::protocol::AnswerCode::ERR_TYPE);
+impl_try_into_value!(I16, i16, crate::protocol::AnswerCode, crate::protocol::AnswerCode::ERR_TYPE);
+impl_try_into_value!(U32, u32, crate::protocol::AnswerCode, crate::protocol::AnswerCode::ERR_TYPE);
+impl_try_into_value!(I32, i32, crate::protocol::AnswerCode, crate::protocol::AnswerCode::ERR_TYPE);
 
 

@@ -1,47 +1,102 @@
-use core::fmt::Display;
+use std::fmt::Debug;
 
 use serde_json::{Value as JsonValue, map::Map};
 use ellocopo2::TypeTag;
 
-const ANNOTATION_ACCESS_STR : &'static str = "@access";
-const ANNOTATION_TYPE_STR   : &'static str = "@type";
+const ANNOTATION_TOKEN:           &'static str = "@";
+const ANNOTATION_ACCESS_STR:      &'static str = "@access";
+const ANNOTATION_CONTROL_STR:     &'static str = "@control";
+const ANNOTATION_TYPE_STR:        &'static str = "@type";
 pub const REGISTER_PATH_DELIMETR: &'static str = "/";
 
-#[derive(Clone)]
-pub struct RegisterDesc {
-    pub path: String,
+#[derive(Clone, Debug)]
+pub enum DslTree {
+    SectionV(Section),
+    RegisterV(Register),
+}
+
+#[derive(Clone, Debug)]
+pub struct Section {
+    pub path: Vec<String>,
+    pub name: String,
+    pub meta: MetaDesc,
+    pub children: Vec<DslTree>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Register {
+    pub path: Vec<String>,
+    pub name: String,
     pub ty: TypeTag,
     pub meta: MetaDesc,
 }
 
-impl core::fmt::Debug for RegisterDesc {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "\nReg: {:40} : {:5} : {:2}", self.path, &format!("{:?}", self.ty), self.meta)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct MetaDesc {
     pub w: bool, // Write rights
     pub r: bool, // Read rights
     pub fast: bool, // Fast impl
+    // TODO: Смотри заметку ниже
+    //pub w_plvl: --; 
+    //pub r_plvl: --;
 }
 
-impl Display for MetaDesc {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl DslTree {
+    pub fn visit(&mut self, f: &mut impl FnMut(&mut DslTree)) {
+        f(self);
         match self {
-            MetaDesc{w: true, r: true, ..} => write!(f, "RW"),
-            MetaDesc{w: true, r: false, ..} => write!(f, "WO"),
-            MetaDesc{w: false, r: true, ..} => write!(f, "RO"),
-            _ => write!(f, "!!"),
+            DslTree::SectionV(section) => {
+                for mut c in &mut section.children {
+                    Self::visit(&mut c, f);
+                }
+            }
+            _ => (),
+        }
+    }
+
+    pub fn visit_accum<A: Clone>(&self, f: &mut impl FnMut(&DslTree, A) -> A, a: A) {
+        let a = f(self, a);
+        match self {
+            DslTree::SectionV(section) => {
+                for c in &section.children {
+                    let a = a.clone();
+                    Self::visit_accum(&c, f, a);
+                }
+            }
+            _ => (),
+        }
+    }
+
+    pub fn visit_regs(&self, f: &mut impl FnMut(&Register)) {
+        match self {
+            DslTree::SectionV(section) => {
+                for c in &section.children {
+                    Self::visit_regs(c, f);
+                }
+            }
+            DslTree::RegisterV(register) => {
+                f(register);
+            }
         }
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct Access {
-    pub w: bool,
-    pub r: bool,
+
+impl Debug for MetaDesc {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            MetaDesc{w: true, r: true,  ..} => write!(f, "RW")?,
+            MetaDesc{w: true, r: false, ..} => write!(f, "WO")?,
+            MetaDesc{w: false, r: true, ..} => write!(f, "RO")?,
+            _ => write!(f, "!!")?,
+        };
+
+        if self.fast {
+            write!(f, " fast")?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for MetaDesc {
@@ -54,24 +109,140 @@ impl Default for MetaDesc {
     }
 }
 
-pub fn parser(dsl: &str) -> Vec<RegisterDesc> {
+pub fn parser(dsl: &str) -> Result<DslTree, String> {
     let v: JsonValue = serde_json::from_str(dsl).unwrap();
     //println!("{:#?}", v);
     //sections(v);
-    let l = visit_regs(v);
-    println!("{:?}", &l);
+    let l = parse_dsl(v);
+    println!("{:#?}", &l);
         
     l
 }
 
-pub fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
+fn parse_dsl(root: JsonValue) -> Result<DslTree, String>{
+    // Default meta RO
+    let meta = MetaDesc::default();
+    // Prefix path with root elem /
+    let mut children = Vec::new();
+    let path = Vec::new();
 
-    fn extract_meta(fields: Map<String, JsonValue>, inhereted_meta: MetaDesc) -> MetaDesc {
-        let mut meta = inhereted_meta;
-        for (k,v) in &fields {
-            if k.starts_with(ANNOTATION_ACCESS_STR) {
+    // root object
+    if let JsonValue::Object(root) = root {
+        for (name, fields) in root {
+            if filter_nodes(&name) {
+                let mut new_path = path.clone();
+                new_path.push(name.clone());
+                children.push(visit_tree(&new_path, &name, &fields, meta)?);
+            }
+        }
+    } else {
+        Err("Non root object".to_string())?
+    };
+
+    Ok(DslTree::SectionV(
+        Section {
+            path,
+            name: "Msg".to_string(),
+            meta,
+            children,
+        }
+    ))
+}
+
+// Здесь читаем аннтоцаии рута, из них строим особоые права доступа для секции и регистров
+// потом в корненвую структуру MetaDesc положим Rc<AccessPriv> у которой поля хэшмапы с именами
+// секций/регистров и в каждом вызове extract_meta будем их правильно устнавливать если значения в
+// хэше сошлись с именем(путем) фактической ноды
+fn parse_root_meta(_root: JsonValue) -> MetaDesc {
+    todo!()
+}
+
+fn filter_nodes(name: &String) -> bool {
+    // filter @annotations
+    !name.starts_with(ANNOTATION_TOKEN)
+}
+
+fn visit_tree(path: &Vec<String>, name: &String, value: &JsonValue, meta: MetaDesc) -> Result<DslTree, String> {
+    Ok(match value {
+        JsonValue::Object(fields) => visit_node(path, name, fields, meta)?,
+        JsonValue::String(ty_s) => { 
+            let ty = ty_convert(ty_s)?;
+            visit_leaf(path, name, ty, meta)?
+        }
+        err_str @ _ => Err(&format!("Unexpected entity in parse tree: {:?}", err_str))?,
+    })
+}
+
+fn visit_node(path: &Vec<String>, name: &String, fields: &Map<String, JsonValue>, meta: MetaDesc) -> Result<DslTree, String> {
+    let meta = meta.extract_update(path, fields);
+    
+    // Test for nested register definition
+    let res = match extract_ty(fields) {
+        // It's nested register definition, proceed to creating a leaf
+        Some(ty) => {
+            visit_leaf(path, name, ty, meta)?
+        }
+        // None => then it's nested section, so continue recursively
+        None => {
+            let mut children = Vec::new();
+            for (name, keys) in fields {
+                if filter_nodes(&name) {
+                    let mut new_path = path.clone();
+                    new_path.push(name.clone());
+                    children.push(
+                        visit_tree(&new_path, name, keys, meta)?
+                    );
+                }
+            }
+
+            DslTree::SectionV(Section {
+                name: name.clone(),
+                path: path.clone(),
+                meta,
+                children,
+            })
+        }
+    };
+
+    Ok(res)
+}
+
+fn visit_leaf(path: &Vec<String>, name: &String, ty: TypeTag, meta: MetaDesc) -> Result<DslTree, String> {
+
+    // WO behaviour for UNIT ty
+    let meta = if let TypeTag::UNIT = ty {
+        MetaDesc{w: true, r: false, .. meta}
+    } else { meta };
+
+    Ok(DslTree::RegisterV(Register {
+        name: name.clone(),
+        path: path.clone(),
+        meta,
+        ty,
+    }))
+}
+
+fn extract_ty(fields: &Map<String, JsonValue>) -> Option<TypeTag> {
+    let mut ty = None;
+    for (k,v) in fields {
+        if k.starts_with(ANNOTATION_TYPE_STR) {
+            if let JsonValue::String(tyy) = v {
+                ty = Some(ty_convert(tyy).unwrap());
+            } else  {
+                panic!("Wrong type in @type")
+            }
+        }
+    }
+    ty
+}
+
+impl MetaDesc {
+    fn extract_update(self, _path: &Vec<String>, fields: &Map<String, JsonValue>) -> MetaDesc {
+        let mut meta = self;
+        for (k,v) in fields {
+            if k == ANNOTATION_ACCESS_STR {
                 if let JsonValue::String(rights) = v {
-                    let Access{ w, r} = access_convert(rights.clone())
+                    let Access{ w, r} = access_convert(rights)
                         .expect("Malformed access rights format");
                     meta.w = w;
                     meta.r = r;
@@ -79,93 +250,18 @@ pub fn visit_regs(root: JsonValue) -> Vec<RegisterDesc> {
                     panic!("Malformed access rights inner type")
                 }
             }
+            if k == ("@fast") {
+                if let JsonValue::Bool(true) = v {
+                    meta.fast = true;
+                }
+            }
         }
         meta
     }
-
-    fn extract_ty(fields: Map<String, JsonValue>) -> Option<TypeTag> {
-        let mut ty = None;
-        for (k,v) in &fields {
-            if k.starts_with(ANNOTATION_TYPE_STR) {
-                if let JsonValue::String(tyy) = v {
-                    ty = Some(ty_convert(tyy.clone()).unwrap());
-                } else  {
-                    panic!("Wrong type in @type")
-                }
-            }
-        }
-        ty
-    }
-    
-    fn inner_visit(path: String, fields: Map<String, JsonValue>, meta: MetaDesc) -> Vec<RegisterDesc> {
-        let mut list = Vec::new();
-        let mut meta = extract_meta(fields.clone(), meta);
-            
-        for (k,v) in &fields {
-            // skip @annotations
-            if !k.starts_with("@") {
-                let updated_path = path.clone() + REGISTER_PATH_DELIMETR + &k;
-                match &v {
-                    JsonValue::String(field) => {
-                        // should be type
-                        let ty = ty_convert(field.clone())
-                            .expect("Wrong register type");
-                        if let TypeTag::UNIT = ty {
-                            meta = MetaDesc{w: true, r: false, .. meta};
-                        }
-                        //println!("Reg: {:40} : {:5} : {:2}", updated_path, &format!("{:?}",ty), meta);
-                        list.push(RegisterDesc{ path: updated_path, ty, meta });
-                    }
-                    JsonValue::Object(fields) => {
-                        meta = extract_meta(fields.clone(), meta);
-                        match extract_ty(fields.clone()) {
-                            // test if nested register description
-                            Some(ty) => {
-                                if let TypeTag::UNIT = ty {
-                                    meta = MetaDesc{w: true, r: false, .. meta};
-                                }
-                                //println!("Reg: {:40} : {:5} : {:2} : ext", updated_path, &format!("{:?}",ty), meta);
-                                list.push(RegisterDesc{ path: updated_path, ty, meta });
-                            }
-                            // if None it's nested section, so continue
-                            None => {
-                                let l = inner_visit(path.clone()+ REGISTER_PATH_DELIMETR + &k, fields.clone(), meta);
-                                list.extend(l);
-                            }
-                        }
-                    }
-                    _ => (),
-                }
-            }
-        }
-
-        list
-    }
-
-    let mut list = Vec::new();
-    let meta = MetaDesc::default();
-    // root object
-    if let JsonValue::Object(root) = root {
-        for (k,v) in &root {
-            // skip all root @annotations for now
-            if !k.starts_with("@") {
-                match &v {
-                    JsonValue::Object(fields) => {
-                        let l = inner_visit(String::from("/") + &k, fields.clone(), meta);
-                        list.extend(l);
-                    }
-                    _ => ()
-                }
-            }
-        }
-    } else {
-        panic!("None root object!")
-    }
-
-    list
 }
 
-fn ty_convert(tytag: String) -> Result<TypeTag, String> {
+
+fn ty_convert(tytag: &String) -> Result<TypeTag, String> {
     let ty = match tytag.as_str() {
         "()"   => TypeTag::UNIT,
         "bool" => TypeTag::BOOL,
@@ -179,7 +275,12 @@ fn ty_convert(tytag: String) -> Result<TypeTag, String> {
     Ok(ty)
 }
 
-fn access_convert(access: String) -> Result<Access, String> {
+struct Access {
+    w: bool,
+    r: bool,
+}
+
+fn access_convert(access: &String) -> Result<Access, String> {
     let access = match access.as_str() {
         "WO" => Access{ w: true, r: false },
         "RO" => Access{ w: false, r: true },
@@ -188,4 +289,5 @@ fn access_convert(access: String) -> Result<Access, String> {
     };
     Ok(access)
 }
+
 

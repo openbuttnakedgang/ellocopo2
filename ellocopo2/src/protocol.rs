@@ -35,7 +35,7 @@ pub const SIGN: u8 = 0x8E;
 
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RequestCode {
     READ = 0,
     WRITE = 1,
@@ -46,12 +46,14 @@ pub enum RequestCode {
 pub enum AnswerCode {
     OK_READ = 0,
     OK_WRITE = 1,
-    ERR_LOCK = 2,
-    ERR_BAD_PROTO = 3,
-    ERR_BAD_FORMAT = 4,
-    ERR_PATH = 5,
+    ERR_BAD_PROTO = 2,
+    ERR_BAD_FORMAT = 3,
+    ERR_PATH = 4,
+    ERR_ACCESS = 5,
     ERR_TYPE = 6,
-    ERR_USER = 7,
+    ERR_PRIV = 7,
+    ERR_UNIMPL = 253,
+    ERR_CUSTOM = 254,
 }
 
 #[repr(packed)]
@@ -78,7 +80,7 @@ impl <'a> RequestBuilder<'a> {
         Self {
             buf,
             ..
-            core::default::Default::default()
+            Default::default()
         }
     }
 
@@ -387,7 +389,7 @@ mod test {
         );
 
         let ans_sz = AnswerBuilder::new(&mut buf)
-            .code(AnswerCode::ERR_LOCK)
+            .code(AnswerCode::ERR_PRIV)
             .build();
         let ans_slice = &buf[0..ans_sz];
         assert_eq!(
@@ -396,7 +398,7 @@ mod test {
                 SIGN,
                 0xf,
                 0x0,
-                AnswerCode::ERR_LOCK as u8,
+                AnswerCode::ERR_PRIV as u8,
                 TypeTag::UNIT as u8,
                 b'b',
                 b'o',
